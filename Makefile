@@ -2,7 +2,7 @@ APP     := build/VietIME.app
 DEST    := $(HOME)/Library/Input Methods
 SOURCES := $(wildcard Sources/*.swift)
 
-.PHONY: build test install uninstall clean
+.PHONY: build test install uninstall clean release
 
 build: $(APP)
 
@@ -28,7 +28,7 @@ install: build
 	rm -rf "$(DEST)/VietIME.app"
 	mkdir -p "$(DEST)"
 	cp -R $(APP) "$(DEST)/"
-	swift scripts/register.swift "$(DEST)/VietIME.app"
+	"$(DEST)/VietIME.app/Contents/MacOS/VietIME" --register
 	@echo ""
 	@echo "Xong. Vào System Settings → Keyboard → Input Sources → Edit… → + → Vietnamese → VietIME."
 	@echo "Lần đầu nếu chưa thấy thì đăng xuất/đăng nhập lại."
@@ -36,6 +36,12 @@ install: build
 uninstall:
 	-pkill -x VietIME
 	rm -rf "$(DEST)/VietIME.app"
+
+# build/VietIME.zip để đính vào GitHub Release (install.sh tải file này).
+release: test build
+	ditto -c -k --keepParent $(APP) build/VietIME-new.zip
+	mv -f build/VietIME-new.zip build/VietIME.zip
+	@echo "build/VietIME.zip — phiên bản $$($(APP)/Contents/MacOS/VietIME --version)"
 
 clean:
 	rm -rf build

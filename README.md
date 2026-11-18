@@ -11,12 +11,19 @@ chuyển app đó sang **chữ tạm** (marked text: từ đang gõ là chữ t�
 
 ## Cài
 
+Dán vào Terminal (macOS 12 trở lên, chip Apple hoặc Intel, không cần Xcode):
+
 ```bash
-make install
+curl -fsSL https://raw.githubusercontent.com/QuangLe1997/VietIME/main/install.sh | bash
 ```
 
 Rồi System Settings → Keyboard → Input Sources → Edit… → **+** → Vietnamese → **VietIME**.
-Lần đầu chưa thấy thì đăng xuất/đăng nhập lại. Gỡ: `make uninstall`.
+Lần đầu chưa thấy thì đăng xuất/đăng nhập lại. Cập nhật: chạy lại lệnh trên.
+
+App chưa ký bởi Apple, nên đừng tải `VietIME.zip` bằng trình duyệt (macOS sẽ chặn); lệnh trên tải
+bằng `curl` nên không bị chặn. Tự build từ mã nguồn: `make install`.
+
+Gỡ: `pkill -x VietIME; rm -rf ~/Library/Input\ Methods/VietIME.app` (hoặc `make uninstall`).
 
 ## Dùng
 
