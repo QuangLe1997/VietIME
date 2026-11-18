@@ -38,6 +38,8 @@ struct VChar {
     var base: Character   // luôn là chữ thường (hoặc chữ số / ký tự literal)
     var mark: Mark = .none
     var upper: Bool
+    /// "ư" sinh ra từ phím w đứng riêng — gõ w lần nữa thì trả lại chữ "w".
+    var fromW = false
 
     var isVowel: Bool { "aeiouy".contains(base) }
 
@@ -54,6 +56,8 @@ public final class VietEngine {
     public var modernTone: Bool = true
     /// Khi từ gõ ra không phải âm tiết tiếng Việt hợp lệ thì trả lại phím gốc (vd. "windows").
     public var autoRestore: Bool = true
+    /// Telex: "w" đứng riêng (đầu từ, sau phụ âm) thành "ư". Tắt thì phải gõ "uw".
+    public var standaloneW: Bool = false
 
     private(set) var chars: [VChar] = []
     private(set) var tone: Tone = .none
@@ -177,6 +181,13 @@ public final class VietEngine {
         guard structureOK() else { return false }
         for edit in candidates {
             if edit.allSatisfy({ chars[$0.0].mark == $0.1 }) {
+                // "ww": chữ "ư" do w đứng riêng tạo ra quay lại thành "w".
+                if edit.count == 1, chars[edit[0].0].fromW {
+                    let i = edit[0].0
+                    chars[i] = VChar(base: "w", upper: chars[i].upper)
+                    literalMode = true
+                    return true
+                }
                 // Gõ lặp: huỷ dấu, phím thành chữ thường ("aaa" → "aa").
                 for (i, _) in edit { chars[i].mark = .none }
                 literalMode = true
@@ -194,8 +205,8 @@ public final class VietEngine {
         if applyMark(.horn, candidates: wCandidates()) { return true }
         if literalMode { return false }
         // "w" đứng riêng → "ư" (vd. "nhw" → "như").
-        guard vowelRange() == nil, initialPrefixOK(initialString(upTo: chars.count)) else { return false }
-        chars.append(VChar(base: "u", mark: .horn, upper: raw.last?.isUppercase ?? false))
+        guard standaloneW, vowelRange() == nil, initialPrefixOK(initialString(upTo: chars.count)) else { return false }
+        chars.append(VChar(base: "u", mark: .horn, upper: raw.last?.isUppercase ?? false, fromW: true))
         return true
     }
 

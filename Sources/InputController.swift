@@ -28,6 +28,7 @@ final class VietIMEInputController: IMKInputController {
         engine.method = state.method
         engine.modernTone = state.modernTone
         engine.autoRestore = state.autoRestore
+        engine.standaloneW = state.standaloneW
     }
 
     private func clearWord() {

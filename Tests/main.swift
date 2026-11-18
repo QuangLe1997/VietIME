@@ -6,9 +6,10 @@ var failures = 0
 var total = 0
 
 /// Gõ chuỗi phím; space/dấu câu kết thúc từ như khi gõ thật.
-func type(_ keys: String, _ method: InputMethod = .telex, modern: Bool = true) -> String {
+func type(_ keys: String, _ method: InputMethod = .telex, modern: Bool = true, w: Bool = false) -> String {
     let e = VietEngine(method: method)
     e.modernTone = modern
+    e.standaloneW = w
     var out = ""
     for k in keys {
         if k == "<" { e.backspace(); continue }
@@ -20,9 +21,9 @@ func type(_ keys: String, _ method: InputMethod = .telex, modern: Bool = true) -
     return out + e.commitText()
 }
 
-func check(_ keys: String, _ want: String, _ method: InputMethod = .telex, modern: Bool = true) {
+func check(_ keys: String, _ want: String, _ method: InputMethod = .telex, modern: Bool = true, w: Bool = false) {
     total += 1
-    let got = type(keys, method, modern: modern)
+    let got = type(keys, method, modern: modern, w: w)
     if got != want {
         failures += 1
         print("FAIL [\(method)] \"\(keys)\" → \"\(got)\", muốn \"\(want)\"")
@@ -46,12 +47,21 @@ check("xoays", "xoáy")
 check("toans", "toán")
 check("hoangf", "hoàng")
 check("huyfnh", "huỳnh")
-check("rwowuj", "rượu")
+check("rwowuj", "rượu", w: true)
 check("ruwowuj", "rượu")
 check("muwa", "mưa")
 check("muaw", "mưa")
-check("nhw", "như")
-check("w", "ư")
+// w đứng riêng: tắt (mặc định) thì giữ chữ w; bật thì thành ư, gõ ww trả lại w
+check("w", "w")
+check("web", "web")
+check("nhw", "nhw")
+check("nhw", "như", w: true)
+check("w", "ư", w: true)
+check("ww", "w", w: true)
+check("nhww", "nhw", w: true)
+check("Ww", "W", w: true)
+check("wwas", "was", w: true)
+check("what", "what", w: true)
 check("tuwj", "tự")
 check("ddi", "đi")
 check("DDi", "Đi")

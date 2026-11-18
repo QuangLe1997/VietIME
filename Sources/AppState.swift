@@ -46,6 +46,7 @@ final class AppState: NSObject {
             "method": InputMethod.telex.rawValue,
             "modernTone": true,
             "autoRestore": true,
+            "standaloneW": false,
             "underline": false,
             "showStatusIcon": true,
             "directMode": true,
@@ -75,6 +76,7 @@ final class AppState: NSObject {
     }
     var modernTone: Bool { d.bool(forKey: "modernTone") }
     var autoRestore: Bool { d.bool(forKey: "autoRestore") }
+    var standaloneW: Bool { d.bool(forKey: "standaloneW") }
     var underline: Bool { d.bool(forKey: "underline") }
     var showStatusIcon: Bool { d.bool(forKey: "showStatusIcon") }
     var directMode: Bool { d.bool(forKey: "directMode") }
@@ -99,6 +101,7 @@ final class AppState: NSObject {
     @objc func selectVNI(_ sender: Any?) { method = .vni }
     @objc func toggleModernTone(_ sender: Any?) { flip("modernTone") }
     @objc func toggleAutoRestore(_ sender: Any?) { flip("autoRestore") }
+    @objc func toggleStandaloneW(_ sender: Any?) { flip("standaloneW") }
     @objc func toggleUnderline(_ sender: Any?) { flip("underline") }
     @objc func toggleStatusIcon(_ sender: Any?) { flip("showStatusIcon") }
     /// Bật/tắt lại thì xoá danh sách app đã tự chuyển sang chữ tạm, để thử lại.
@@ -112,7 +115,7 @@ final class AppState: NSObject {
 
     static let actions: Set<Selector> = [
         #selector(toggleVietnamese(_:)), #selector(selectTelex(_:)), #selector(selectVNI(_:)),
-        #selector(toggleModernTone(_:)), #selector(toggleAutoRestore(_:)), #selector(toggleUnderline(_:)),
+        #selector(toggleModernTone(_:)), #selector(toggleAutoRestore(_:)), #selector(toggleStandaloneW(_:)), #selector(toggleUnderline(_:)),
         #selector(toggleStatusIcon(_:)), #selector(toggleDirectMode(_:)), #selector(shortcutCtrlShift(_:)), #selector(shortcutCmdShift(_:)),
         #selector(shortcutOptZ(_:)),
     ]
@@ -140,6 +143,7 @@ final class AppState: NSObject {
         item("Gõ trực tiếp (Enter gửi tin ngay)", #selector(toggleDirectMode(_:)), directMode)
         item("Bỏ dấu kiểu mới (hoà, thuỷ)", #selector(toggleModernTone(_:)), modernTone)
         item("Tự khôi phục từ tiếng Anh", #selector(toggleAutoRestore(_:)), autoRestore)
+        item("Telex: w đứng riêng thành ư", #selector(toggleStandaloneW(_:)), standaloneW)
         item("Gạch chân chữ tạm", #selector(toggleUnderline(_:)), underline)
         item("Hiện V/E trên thanh menu", #selector(toggleStatusIcon(_:)), showStatusIcon)
         return menu

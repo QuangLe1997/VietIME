@@ -20,7 +20,9 @@ Lần đầu chưa thấy thì đăng xuất/đăng nhập lại. Gỡ: `make un
 
 ## Dùng
 
-- Telex: `s f r x j` dấu thanh, `z` xoá dấu, `aa ee oo` mũ, `aw ow uw` / `w` → ă ơ ư, `dd` → đ.
+- Telex: `s f r x j` dấu thanh, `z` xoá dấu, `aa ee oo` mũ, `aw ow uw` → ă ơ ư, `dd` → đ.
+  `w` đứng riêng (`w` → ư, `nhw` → như) tắt sẵn để gõ web, what… không bị thành ư; bật trong menu.
+  Khi bật, gõ `ww` trả lại chữ w.
 - VNI: `1–5` dấu thanh, `0` xoá dấu, `6` mũ, `7` móc, `8` trăng, `9` đ.
 - Gõ lặp để huỷ: `ass` → as, `aaa` → aa. **Esc** trả nguyên phím đã gõ của từ đang gõ.
 - Từ không phải tiếng Việt (windows, class, hello) tự giữ nguyên.
