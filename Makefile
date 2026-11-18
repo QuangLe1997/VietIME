@@ -20,6 +20,8 @@ test:
 	mkdir -p build
 	swiftc Sources/VietEngine.swift Tests/main.swift -o build/tests
 	./build/tests
+	swiftc Sources/VietEngine.swift Sources/AppState.swift Sources/InputController.swift Tests/Controller/main.swift -o build/ctltests
+	./build/ctltests
 
 install: build
 	-pkill -x VietIME

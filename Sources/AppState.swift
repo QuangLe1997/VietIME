@@ -48,6 +48,8 @@ final class AppState: NSObject {
             "autoRestore": true,
             "underline": false,
             "showStatusIcon": true,
+            "directMode": true,
+            "markedApps": [String](),
             "shortcut": Shortcut.ctrlShift.rawValue,
         ])
         DistributedNotificationCenter.default().addObserver(
@@ -75,6 +77,15 @@ final class AppState: NSObject {
     var autoRestore: Bool { d.bool(forKey: "autoRestore") }
     var underline: Bool { d.bool(forKey: "underline") }
     var showStatusIcon: Bool { d.bool(forKey: "showStatusIcon") }
+    var directMode: Bool { d.bool(forKey: "directMode") }
+    /// App không cho thay chữ theo vùng → luôn dùng chữ tạm.
+    var markedApps: [String] { d.stringArray(forKey: "markedApps") ?? [] }
+
+    func addMarkedApp(_ bundleID: String) {
+        guard !bundleID.isEmpty, !markedApps.contains(bundleID) else { return }
+        d.set(markedApps + [bundleID], forKey: "markedApps")
+        NSLog("VietIME: %@ không hỗ trợ gõ trực tiếp, chuyển sang chữ tạm", bundleID)
+    }
 
     private func flip(_ key: String) {
         d.set(!d.bool(forKey: key), forKey: key)
@@ -90,6 +101,11 @@ final class AppState: NSObject {
     @objc func toggleAutoRestore(_ sender: Any?) { flip("autoRestore") }
     @objc func toggleUnderline(_ sender: Any?) { flip("underline") }
     @objc func toggleStatusIcon(_ sender: Any?) { flip("showStatusIcon") }
+    /// Bật/tắt lại thì xoá danh sách app đã tự chuyển sang chữ tạm, để thử lại.
+    @objc func toggleDirectMode(_ sender: Any?) {
+        d.set([String](), forKey: "markedApps")
+        flip("directMode")
+    }
     @objc func shortcutCtrlShift(_ sender: Any?) { shortcut = .ctrlShift }
     @objc func shortcutCmdShift(_ sender: Any?) { shortcut = .cmdShift }
     @objc func shortcutOptZ(_ sender: Any?) { shortcut = .optZ }
@@ -97,7 +113,7 @@ final class AppState: NSObject {
     static let actions: Set<Selector> = [
         #selector(toggleVietnamese(_:)), #selector(selectTelex(_:)), #selector(selectVNI(_:)),
         #selector(toggleModernTone(_:)), #selector(toggleAutoRestore(_:)), #selector(toggleUnderline(_:)),
-        #selector(toggleStatusIcon(_:)), #selector(shortcutCtrlShift(_:)), #selector(shortcutCmdShift(_:)),
+        #selector(toggleStatusIcon(_:)), #selector(toggleDirectMode(_:)), #selector(shortcutCtrlShift(_:)), #selector(shortcutCmdShift(_:)),
         #selector(shortcutOptZ(_:)),
     ]
 
@@ -121,9 +137,10 @@ final class AppState: NSObject {
         item(Shortcut.cmdShift.title, #selector(shortcutCmdShift(_:)), shortcut == .cmdShift, indent: true)
         item(Shortcut.optZ.title, #selector(shortcutOptZ(_:)), shortcut == .optZ, indent: true)
         menu.addItem(.separator())
+        item("Gõ trực tiếp (Enter gửi tin ngay)", #selector(toggleDirectMode(_:)), directMode)
         item("Bỏ dấu kiểu mới (hoà, thuỷ)", #selector(toggleModernTone(_:)), modernTone)
         item("Tự khôi phục từ tiếng Anh", #selector(toggleAutoRestore(_:)), autoRestore)
-        item("Gạch chân chữ đang gõ", #selector(toggleUnderline(_:)), underline)
+        item("Gạch chân chữ tạm", #selector(toggleUnderline(_:)), underline)
         item("Hiện V/E trên thanh menu", #selector(toggleStatusIcon(_:)), showStatusIcon)
         return menu
     }

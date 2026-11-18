@@ -1,9 +1,13 @@
 import Cocoa
 import InputMethodKit
 
-// Cách làm: giữ từ đang gõ ở dạng "marked text" (chữ tạm của app), khi kết thúc từ thì
-// insertText một lần. Không giả lập phím Backspace như các bộ gõ khác, nên không bị
-// nhân đôi/mất chữ ở app Electron, Chrome, Telegram khi gõ nhanh.
+// Hai cách đưa chữ vào app, đều không giả lập phím Backspace như EVKey/OpenKey:
+//
+// 1. Gõ trực tiếp (mặc định): chèn chữ thật vào ô nhập, mỗi lần thêm dấu thì thay cả từ
+//    bằng insertText(_:replacementRange:). Không có chữ tạm nên Enter trong Telegram,
+//    Messenger… gửi tin ngay.
+// 2. Chữ tạm (marked text): từ đang gõ là chữ tạm, hết từ mới chèn. Dùng khi tắt gõ trực
+//    tiếp, hoặc tự chuyển sang khi app không cho thay chữ theo vùng (một số terminal, app Java).
 
 @objc(VietIMEInputController)
 final class VietIMEInputController: IMKInputController {
@@ -12,15 +16,31 @@ final class VietIMEInputController: IMKInputController {
     /// Đang giữ đúng tổ hợp phím tắt (⌃⇧ / ⌘⇧) và chưa bấm phím nào khác.
     private var shortcutArmed = false
 
+    // Từ đang gõ ở chế độ trực tiếp: vị trí bắt đầu trong ô nhập, độ dài UTF-16 và nội dung
+    // VietIME đã chèn (để kiểm con trỏ chưa bị dời trước khi thay).
+    private var wordStart: Int?
+    private var wordLen = 0
+    private var wordText: String?
+    /// Từ hiện tại đang dùng chữ tạm.
+    private var markedWord = false
+
     private func syncPrefs() {
         engine.method = state.method
         engine.modernTone = state.modernTone
         engine.autoRestore = state.autoRestore
     }
 
+    private func clearWord() {
+        wordStart = nil
+        wordLen = 0
+        wordText = nil
+        markedWord = false
+    }
+
     override func activateServer(_ sender: Any!) {
         syncPrefs()
         engine.reset()
+        clearWord()
         shortcutArmed = false
         state.refreshStatus()
     }
@@ -62,6 +82,12 @@ final class VietIMEInputController: IMKInputController {
             return false
         }
 
+        // Con trỏ đã bị dời (click chuột, app tự sửa chữ) → bỏ từ cũ, coi như từ mới.
+        if !engine.isEmpty && !markedWord && !directWordStillValid(client) {
+            engine.reset()
+            clearWord()
+        }
+
         // Phím tắt (⌘C, ⌃A, ⌥…) → chốt từ rồi để app xử lý.
         if !mods.intersection([.command, .control, .option]).isEmpty {
             commit(client)
@@ -72,24 +98,28 @@ final class VietIMEInputController: IMKInputController {
         case 51: // Delete
             guard !engine.isEmpty else { return false }
             engine.backspace()
-            showComposition(client)
+            render(client)
+            if engine.isEmpty { clearWord() }
             return true
         case 53: // Esc: bỏ dấu, trả nguyên phím đã gõ
             guard !engine.isEmpty else { return false }
             let rawText = engine.rawKeys
             engine.reset()
-            client.insertText(rawText, replacementRange: Self.notFound)
+            write(rawText, client)
+            clearWord()
             return true
         default:
             break
         }
 
+        let wasEmpty = engine.isEmpty
         guard let s = event.characters, s.count == 1, let ch = s.first, engine.process(ch) else {
             // Space, Enter, Tab, dấu câu, phím mũi tên… → chốt từ trước, app nhận phím sau.
             commit(client)
             return false
         }
-        showComposition(client)
+        if wasEmpty { beginWord(client) }
+        render(client)
         return true
     }
 
@@ -116,7 +146,58 @@ final class VietIMEInputController: IMKInputController {
 
     private static let notFound = NSRange(location: NSNotFound, length: NSNotFound)
 
-    private func showComposition(_ client: IMKTextInput) {
+    /// Chọn cách hiển thị cho từ mới.
+    private func beginWord(_ client: IMKTextInput) {
+        clearWord()
+        let app = client.bundleIdentifier() ?? ""
+        guard state.directMode, !state.markedApps.contains(app) else {
+            markedWord = true
+            return
+        }
+        let sel = client.selectedRange()
+        guard sel.location != NSNotFound else {
+            markedWord = true
+            return
+        }
+        // App không đọc được chữ trước con trỏ thì cũng không thay chữ theo vùng được.
+        if sel.location > 0 && client.attributedSubstring(from: NSRange(location: sel.location - 1, length: 1)) == nil {
+            state.addMarkedApp(app)
+            markedWord = true
+            return
+        }
+        wordStart = sel.location
+        wordLen = sel.length   // đang bôi đen thì chữ gõ vào thay phần bôi đen
+    }
+
+    private func directWordStillValid(_ client: IMKTextInput) -> Bool {
+        guard let start = wordStart, let text = wordText else { return false }
+        let sel = client.selectedRange()
+        guard sel.location == start + wordLen, sel.length == 0 else { return false }
+        return client.attributedSubstring(from: NSRange(location: start, length: wordLen))?.string == text
+    }
+
+    private func render(_ client: IMKTextInput) {
+        if markedWord {
+            showMarked(client)
+            return
+        }
+        guard let start = wordStart else { return }
+        let text = engine.composed
+        client.insertText(text, replacementRange: NSRange(location: start, length: wordLen))
+        let n = (text as NSString).length
+        let readBack = n == 0 ? "" : client.attributedSubstring(from: NSRange(location: start, length: n))?.string
+        if readBack == text {
+            wordLen = n
+            wordText = text
+        } else {
+            // App không làm đúng việc thay chữ: lần sau dùng chữ tạm cho app này.
+            state.addMarkedApp(client.bundleIdentifier() ?? "")
+            engine.reset()
+            clearWord()
+        }
+    }
+
+    private func showMarked(_ client: IMKTextInput) {
         let text = engine.composed
         let attrs: [NSAttributedString.Key: Any] = [
             .underlineStyle: state.underline ? NSUnderlineStyle.single.rawValue : 0,
@@ -126,11 +207,21 @@ final class VietIMEInputController: IMKInputController {
                              replacementRange: Self.notFound)
     }
 
+    /// Ghi chuỗi cuối cùng của từ (đã chốt) ra app.
+    private func write(_ final: String, _ client: IMKTextInput) {
+        if markedWord {
+            client.insertText(final, replacementRange: Self.notFound)
+        } else if let start = wordStart, final != wordText, directWordStillValid(client) {
+            client.insertText(final, replacementRange: NSRange(location: start, length: wordLen))
+        }
+    }
+
     private func commit(_ sender: Any?) {
+        defer { clearWord() }
         guard !engine.isEmpty else { return }
-        let text = engine.commitText()
+        let final = engine.commitText()
         guard let client = (sender as? IMKTextInput) ?? self.client() else { return }
-        client.insertText(text, replacementRange: Self.notFound)
+        write(final, client)
     }
 
     // MARK: - Menu của biểu tượng nguồn nhập (cùng nội dung với menu V/E)

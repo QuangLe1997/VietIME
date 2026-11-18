@@ -4,7 +4,10 @@ Bộ gõ InputMethodKit tự viết, ~600 dòng Swift, không phụ thuộc thư
 
 **Vì sao không lỗi như bộ gõ khác:** EVKey/OpenKey sửa chữ bằng cách gửi phím Backspace
 giả rồi gõ lại; app Electron/Chrome/Telegram xử lý phím chậm nên hay nhân đôi hoặc mất chữ.
-VietIME giữ từ đang gõ ở dạng chữ tạm (marked text) và chỉ chèn một lần khi hết từ.
+VietIME không gửi phím giả. Mặc định nó **gõ trực tiếp**: chèn chữ thật vào ô nhập, thêm dấu thì
+thay cả từ theo vùng (`insertText(_:replacementRange:)`). Không có chữ tạm nên Enter trong
+Telegram/Messenger gửi tin ngay. App nào không cho thay chữ theo vùng thì VietIME tự nhớ và
+chuyển app đó sang **chữ tạm** (marked text: từ đang gõ là chữ tạm, hết từ mới chèn).
 
 ## Cài
 
@@ -26,11 +29,13 @@ Lần đầu chưa thấy thì đăng xuất/đăng nhập lại. Gỡ: `make un
 - **Thanh menu:** chữ **V** (đang gõ Việt) / **E** (đang gõ Anh), bấm vào ra menu: bật/tắt tiếng Việt,
   Telex/VNI, phím tắt, kiểu bỏ dấu cũ/mới, tự khôi phục, gạch chân, ẩn/hiện chữ V/E.
   Chỉ hiện khi VietIME là nguồn nhập đang chọn. Menu này cũng có ở biểu tượng nguồn nhập của macOS.
+- **Gõ trực tiếp (Enter gửi tin ngay)** bật sẵn. Tắt đi thì mọi app dùng chữ tạm (Enter ngay sau
+  một từ trong Telegram sẽ xuống dòng). Tắt/bật lại cũng xoá danh sách app đã tự chuyển sang chữ tạm.
 
 ## Phát triển
 
 ```bash
-make test    # engine, không cần cài
+make test    # engine + controller trên ô nhập giả mô phỏng Telegram, không cần cài
 make build   # build/VietIME.app (arm64 + x86_64, ký ad-hoc)
 ```
 
