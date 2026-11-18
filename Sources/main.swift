@@ -8,5 +8,6 @@ let connectionName = Bundle.main.infoDictionary?["InputMethodConnectionName"] as
 let server = IMKServer(name: connectionName, bundleIdentifier: Bundle.main.bundleIdentifier)
 _ = server
 _ = AppState.shared
+DispatchQueue.global(qos: .utility).async { _ = EnglishWords.set }   // nạp từ điển sẵn (~80 ms)
 
 app.run()

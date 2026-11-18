@@ -58,6 +58,8 @@ public final class VietEngine {
     public var autoRestore: Bool = true
     /// Telex: "w" đứng riêng (đầu từ, sau phụ âm) thành "ư". Tắt thì phải gõ "uw".
     public var standaloneW: Bool = false
+    /// Tra từ điển tiếng Anh (chữ thường). Dùng khi gõ lặp/z làm mất chữ của một từ tiếng Anh.
+    public var isEnglishWord: (String) -> Bool = { _ in false }
 
     private(set) var chars: [VChar] = []
     private(set) var tone: Tone = .none
@@ -267,6 +269,13 @@ public final class VietEngine {
         "oo", "ôi", "ơi", "ua", "uâ", "uê", "ui", "uô", "uơ", "uy", "ưa", "ưi", "ươ", "ưu", "yê",
         "iêu", "oai", "oay", "oeo", "uây", "uôi", "uya", "uyê", "uyu", "ươi", "ươu", "yêu",
     ]
+    /// Vần kết thúc bằng bán nguyên âm (hoặc ia/ua/ưa/uơ): không đi với phụ âm cuối.
+    static let openOnly: Set<String> = [
+        "ai", "ao", "au", "ay", "âu", "ây", "eo", "êu", "ia", "iu", "oi", "ôi", "ơi", "ua", "ui", "ưa", "ưi",
+        "ưu", "uơ", "iêu", "oai", "oay", "oeo", "uây", "uôi", "uya", "uyu", "ươi", "ươu", "yêu",
+    ]
+    /// Vần đứng trước -ch / -nh: ach, ếch, ích, uỵch, oách, nguệch; anh, ênh, inh, huỳnh, oanh, huênh.
+    static let beforeChNh: Set<String> = ["a", "ê", "i", "y", "uy", "oa", "uê"]   // y: quỳnh, quých
     static let clusterPrefixes: Set<String> = {
         var s = Set<String>()
         for c in clusters {
@@ -324,13 +333,18 @@ public final class VietEngine {
     /// Âm tiết hoàn chỉnh hợp lệ — dùng để quyết định khôi phục phím gốc khi commit.
     func isValidSyllable() -> Bool {
         if chars.contains(where: { !$0.base.isLetter }) { return false }
-        guard let r = vowelRange() else { return initialPrefixOK(initialString(upTo: chars.count)) }
+        // Không nguyên âm: viết tắt (đc, đk, đt, ng) — giữ như gõ.
+        guard let r = vowelRange() else { return true }
         guard VietEngine.initials.contains(initialString(upTo: r.lowerBound)),
               VietEngine.clusters.contains(clusterString())
         else { return false }
         let fin = finalString()
         guard VietEngine.finals.contains(fin) else { return false }
-        if ["c", "ch", "p", "t"].contains(fin) && !(tone == .none || tone == .sac || tone == .nang) { return false }
+        let cl = clusterString()
+        if !fin.isEmpty && VietEngine.openOnly.contains(cl) { return false }            // "baóm"
+        if (fin == "ch" || fin == "nh") && !VietEngine.beforeChNh.contains(cl) { return false }
+        // Tận cùng c/ch/p/t chỉ đi với sắc, nặng (không dấu là không phải tiếng Việt: hertz → het).
+        if ["c", "ch", "p", "t"].contains(fin) && !(tone == .sac || tone == .nang) { return false }
         return true
     }
 
@@ -352,15 +366,24 @@ public final class VietEngine {
 
     // MARK: - Xuất chữ
 
+    /// "ươ" đứng cuối từ không có tiếng nào; đó là "uơ" (thuở, huơ). Còn gõ tiếp (ương, ười)
+    /// thì móc của u hiện lại.
+    private func bareUIndex() -> Int? {
+        guard let r = vowelRange(), r.count == 2, r.upperBound == chars.count else { return nil }
+        let u = chars[r.lowerBound], o = chars[r.lowerBound + 1]
+        return u.base == "u" && u.mark == .horn && o.base == "o" && o.mark == .horn ? r.lowerBound : nil
+    }
+
     public var composed: String {
         let tp = tone == .none ? nil : tonePosition()
+        let bareU = bareUIndex()
         var s = ""
         for (i, c) in chars.enumerated() {
             var t: String
             if c.base == "d" && c.mark == .stroke {
                 t = "đ"
             } else {
-                t = String(c.base) + c.mark.combining
+                t = String(c.base) + (i == bareU ? "" : c.mark.combining)
                 if i == tp, let comb = tone.combining { t += comb }
                 t = t.precomposedStringWithCanonicalMapping
             }
@@ -377,9 +400,11 @@ public final class VietEngine {
     public func commitText() -> String {
         defer { reset() }
         let out = composed
-        if autoRestore && restorable && hasDiacritics && !isValidSyllable() {
-            return raw
-        }
+        guard autoRestore && restorable && out != raw && !isValidSyllable() else { return out }
+        if hasDiacritics { return raw }
+        // Không dấu nhưng đã mất chữ (affect → afect, aromatize → aomatie): trả phím gốc nếu đó là
+        // một từ tiếng Anh. Từ ngắn (ass → as, off → of) là cách gõ chủ ý nên giữ.
+        if raw.count >= 4 && isEnglishWord(raw.lowercased()) { return raw }
         return out
     }
 }

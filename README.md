@@ -25,7 +25,9 @@ Lần đầu chưa thấy thì đăng xuất/đăng nhập lại. Gỡ: `make un
   Khi bật, gõ `ww` trả lại chữ w.
 - VNI: `1–5` dấu thanh, `0` xoá dấu, `6` mũ, `7` móc, `8` trăng, `9` đ.
 - Gõ lặp để huỷ: `ass` → as, `aaa` → aa. **Esc** trả nguyên phím đã gõ của từ đang gõ.
-- Từ không phải tiếng Việt (windows, class, hello) tự giữ nguyên.
+- Từ không phải tiếng Việt (windows, class, hello) tự giữ nguyên. Từ tiếng Anh bị gõ lặp làm mất chữ
+  (affect, coffee, possible) được trả lại nhờ từ điển có sẵn của macOS (`/usr/share/dict/words`).
+  Từ tiếng Anh trùng âm tiết Việt (`mist` → mít, `bee` → bê) thì không đoán được: bấm **Esc** trước Space.
 - **Chuyển Anh ↔ Việt:** bấm rồi thả **⌃⇧** (Control + Shift), mặc định. Đổi sang ⌘⇧ hoặc ⌥Z
   trong menu. Phím tắt chỉ tắt bỏ dấu, không đổi nguồn nhập (⌃Space của macOS thì đổi nguồn nhập).
 - **Thanh menu:** chữ **V** (đang gõ Việt) / **E** (đang gõ Anh), bấm vào ra menu: bật/tắt tiếng Việt,
@@ -37,7 +39,7 @@ Lần đầu chưa thấy thì đăng xuất/đăng nhập lại. Gỡ: `make un
 ## Phát triển
 
 ```bash
-make test    # engine + controller trên ô nhập giả mô phỏng Telegram, không cần cài
+make test    # engine (~1000 ca, gồm ~170 từ khó gõ 5 kiểu) + controller mô phỏng Telegram
 make build   # build/VietIME.app (arm64 + x86_64, ký ad-hoc)
 ```
 
